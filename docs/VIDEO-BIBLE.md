@@ -10,7 +10,7 @@ How every explainer looks, moves and reads, whatever the brand. **Identity is no
 ## Format
 
 - **Vertical 9:16, 1080×1920, 60 fps**, for TikTok, Reels and Shorts. Silent, readable on mute.
-- **Phone safe zones:** platform UI covers the top 140 px, the right 120 px between y 700 and 1600, and the bottom 320 px. Captions, labels and anything that must be read stay out of them; decoration may pass through. The watermark sits in the status-bar strip on purpose.
+- **Phone safe zones:** platform UI covers the top 140 px, the right 120 px between y 700 and 1600, and the bottom 320 px. Captions, labels and anything that must be read stay out of them, at least 30 px clear, because the camera push-in enlarges the stage toward the edges by the end of each scene (readable content within x 80–920). Decoration may pass through. The watermark sits in the status-bar strip on purpose.
 - 30–45 s including holds and outro.
 
 ## Cadence (the engine enforces it)
@@ -73,16 +73,19 @@ The brand's voice comes first (read its design-system reference). Within it:
 
 - **One idea per scene**, 2–4 caption blocks, about 6–16 words. Hook and conclusion are the shortest.
 - **Each block is one sentence or phrase** — it gets its own 0.5 s beat, so write blocks that stand alone.
+- **Line length:** a caption line holds about 1850 ÷ font size characters (~18 at 100–104 px, ~21 at 88, ~23 at 80). Never let a wrap leave one word alone on a line: shorten, lower the size, or break by hand between phrases (`\n`). `render.mjs --stills` lists every bad wrap.
 - **Highlight 1–3 words per scene** with `*`: the words a muted viewer must catch.
 - Concrete over abstract; "you" for the viewer, "we" for the brand; fragments welcome; digits for numbers.
 - Never: hype ("revolutionary", "military-grade", "100% anonymous"), exclamation marks, emojis, jargon without a picture.
 
 ## Claims
 
-- Every factual caption traces to the source PDF or a product file; record it in the storyboard `claims` with a page.
+- Every factual caption traces to the source PDF, a product file or a public source; record it in the storyboard `claims` as `p3`, `product:<brand>/<product>` or `public:<where>`.
 - Keep source qualifiers (beta, testnet, in private mode, open models, dates) — in a footnote or the outro note if they don't fit.
 - **The design system's product status wins:** if it marks a product upcoming, don't present it as live. Add the status to the outro note.
 - Use only taglines the design system marks as approved. "Proposed" headlines and placeholder copy are not approved.
 - Design does not establish capabilities: don't imply privacy, security, availability or compliance guarantees the source doesn't state.
 - Comparisons: each product in its most private mode, cite "per public docs, <month year>", "~" when it depends.
-- Sources marked internal/confidential: leave internal-only details out and list them in `source.excluded`.
+- **Internal sources** (any page marked internal, confidential, draft or not for distribution, or showing staging/preview URLs): the whole document is internal. The allowed facts are what the product files and the design system already state, plus public third-party facts the source cites; the PDF only chooses and orders them. Always leave out, and list in `source.excluded`: environment names, unannounced URLs, test results and numbers, timings, roadmap dates and versions, open gaps, unnamed partners, people, forks and code origins, protocol internals the product files don't state, prices and limits.
+- Don't ask about the audience for an internal source: make the public-safe cut and say so. Ask only if the person explicitly wants internal details in the video.
+- Never copy facts from an internal source into `products/` (it is public). Report conflicts with a product file to the person instead.

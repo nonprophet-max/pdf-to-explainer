@@ -1,11 +1,13 @@
 #!/usr/bin/env node
 // Export a storyboard as a model-agnostic shot list (Markdown + JSON), for any video model
-// (Runway, Veo, Sora, Kling...) or a human editor. Timings already include the house cadence.
+// (Runway, Veo, Sora, Kling...) or a human editor. Timings and captions come from the engine composition
+// (video.tsx), so they match the render exactly; roles, visuals and plate prompts come from storyboard.json.
+// For a fully generative cut without video.tsx, --from-storyboard approximates the timings from the storyboard.
 //
-//   node scripts/export-prompts.mjs <slug> [--format 9x16|16x9] [--out DIR]
+//   node scripts/export-prompts.mjs <slug> [--format 9x16|16x9] [--out DIR] [--from-storyboard]
 import fs from 'node:fs';
 import path from 'node:path';
-import {CADENCE, GENERATIVE, args, readPack, readStoryboard, sceneTimes} from './lib.mjs';
+import {CADENCE, GENERATIVE, args, engineFor, readPack, readStoryboard, timingFor} from './lib.mjs';
 
 const a = args();
 const slug = a._[0];
@@ -13,32 +15,38 @@ if (!slug) {
   console.error('Usage: node scripts/export-prompts.mjs <slug> [--format 9x16|16x9] [--out DIR]');
   process.exit(1);
 }
-const engine = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'engine');
+const engine = engineFor(a, slug);
 const sb = readStoryboard(engine, slug);
 const pack = readPack(engine, a.brand ?? sb.brand);
 const theme = pack.themes[sb.theme ?? 'dark'];
 const format = a.format ?? '9x16';
-const times = sceneTimes(sb);
+const timing = await timingFor(a, engine, slug, sb, format);
+const board = Object.fromEntries(sb.scenes.map((s) => [s.id, s]));
 const style = `${GENERATIVE.stylePrompt}, palette ${theme.bg} with one accent ${theme.accent}`;
 const fmt = (s) => s.toFixed(2);
 const clean = (line) => line.replace(/\*/g, '');
 
-const shots = sb.scenes.map((s, i) => ({
-  id: s.id,
-  role: s.role,
-  start: +fmt(times[i].start),
-  end: +fmt(times[i].end),
-  captions: s.caption.map(clean),
-  highlight: s.caption.flatMap((l) => l.split(' ').filter((w) => w.startsWith('*')).map((w) => clean(w).replace(/[.,:;!?]+$/, ''))),
-  visual: s.visual,
-  prompt: [s.plate?.prompt ?? s.visual, style, GENERATIVE.rules].map((x) => x.trim().replace(/\.$/, '')).join('. ') + '.',
-}));
-const total = times.at(-1).end + CADENCE.outroSec;
+const shots = timing.scenes.map((v) => {
+  const s = board[v.id] ?? {};
+  const visual = s.visual ?? '(not in storyboard.json)';
+  return {
+    id: v.id,
+    role: s.role ?? '?',
+    start: +fmt(v.start),
+    end: +fmt(v.end),
+    captions: v.captions.map(clean),
+    highlight: v.captions.flatMap((l) => l.split(' ').filter((w) => w.startsWith('*')).map((w) => clean(w).replace(/[.,:;!?]+$/, ''))),
+    visual,
+    prompt: [s.plate?.prompt ?? visual, style, GENERATIVE.rules].map((x) => x.trim().replace(/\.$/, '')).join('. ') + '.',
+  };
+});
+const total = timing.total;
+const lastEnd = timing.outroStart;
 
 const md = [
   `# ${sb.title} — shot list`,
   ``,
-  `Brand ${pack.name}${pack.component ? ` · ${pack.component.name}` : ''} · format ${format} · theme ${sb.theme ?? 'dark'} · total ${fmt(total)} s (approx.; the engine is exact) · silent`,
+  `Brand ${pack.name}${pack.component ? ` · ${pack.component.name}` : ''} · format ${format} · theme ${sb.theme ?? 'dark'} · total ${fmt(total)} s · silent`,
   ``,
   `Cadence: caption blocks appear ${CADENCE.captionPauseSec} s apart (after the previous block has landed, including after each scene's first line); each scene ends with a ${CADENCE.holdSec} s hold, the last content scene with a ${CADENCE.conclusionHoldSec} s hold, then a ${CADENCE.outroSec} s brand outro.`,
   `Generate visuals without text; add captions in post (kinetic, word by word, highlighted words ${theme.highlight === 'marker' ? `on an ${theme.accent} marker` : `in ${theme.accentText}`}, font ${pack.fonts.display}).`,
@@ -56,7 +64,7 @@ const md = [
     `Prompt: ${s.prompt}`,
     ``,
   ]),
-  `## outro · ${fmt(times.at(-1).end)}–${fmt(total)} s`,
+  `## outro · ${fmt(lastEnd)}–${fmt(total)} s`,
   ``,
   `Logo spins in, "${pack.name}"${pack.component ? ` with "${pack.component.name}"` : ''}${sb.outro?.tagline ? `, "${sb.outro.tagline}"` : ''}${(sb.outro?.url ?? pack.url) ? `, URL pill "${sb.outro?.url ?? pack.url}"` : ''}${sb.outro?.note ? `, note "${sb.outro.note}"` : ''}${pack.endorsement ? `, "${pack.endorsement}"` : ''}.`,
   ``,

@@ -55,10 +55,10 @@ engine/                   Remotion engine
   src/videos/who-sees-what/   reference video + storyboard
 scripts/
   brands.mjs              sync the design system, build/list brand packs
-  new-video.mjs           scaffold or upgrade the private workspace and a video
-  render.mjs              MP4s, or --stills (one frame per scene, safe zones overlaid); --brand to re-brand
-  runway-plates.mjs       per-scene backdrops with Runway gen4.5
-  export-prompts.mjs      timed shot list for any video model or editor
+  new-video.mjs           scaffold the private workspace and a video; --update upgrades it (with backup)
+  render.mjs              MP4s, or --stills (one frame per scene, safe zones overlaid, caption-wrap warnings); --brand to re-brand
+  runway-plates.mjs       per-scene backdrops with Runway gen4.5 (scene lengths from the engine)
+  export-prompts.mjs      shot list for any video model or editor (timings and captions from the engine)
 ```
 
 ## Commands
@@ -66,15 +66,19 @@ scripts/
 ```bash
 node scripts/brands.mjs sync                                  # fetch/update the design system, build packs
 node scripts/brands.mjs list                                  # brands and sub-brands
-node scripts/new-video.mjs my-video --brand fireflow          # scaffold in ~/explainer-studio
-node scripts/render.mjs my-video --stills                     # one still per scene, safe zones overlaid
-node scripts/render.mjs my-video --themes dark,light          # final MP4s
-node scripts/render.mjs my-video --brand lanni                # same video, another brand
-RUNWAYML_API_SECRET=... node scripts/runway-plates.mjs my-video --dry-run
-node scripts/export-prompts.mjs my-video                      # shot list for other models
+node scripts/new-video.mjs my-video --brand fireflow          # scaffold in ~/explainer-studio (run from this repo)
+
+# from here on, the workspace copy:
+node ~/explainer-studio/scripts/render.mjs my-video --stills            # one still per scene, safe zones, wrap warnings
+node ~/explainer-studio/scripts/render.mjs my-video --themes dark,light # final MP4s
+node ~/explainer-studio/scripts/render.mjs my-video --brand lanni       # same video, another brand
+RUNWAYML_API_SECRET=... node ~/explainer-studio/scripts/runway-plates.mjs my-video --dry-run
+node ~/explainer-studio/scripts/export-prompts.mjs my-video             # shot list for other models
 ```
 
-Run them from the workspace (`~/explainer-studio/scripts/…`) once it exists. `node scripts/new-video.mjs --update` upgrades an existing workspace to the installed skill version (videos are kept).
+The repo's own `engine/` only holds the reference video; run from the repo, the scripts fall back to `~/explainer-studio` for other slugs (`--workspace DIR` picks another workspace).
+
+`new-video.mjs` never upgrades a workspace made by another skill version on its own, because the upgrade replaces the engine under every video already there. It stops and asks for `--update`, which backs up the old engine to `.backups/`, upgrades, and type-checks every video. A video that no longer compiles is skipped at render time, so the others keep rendering.
 
 To try the reference video from this repo: `node scripts/brands.mjs sync && cd engine && npm install && npx remotion studio src/index.ts`.
 

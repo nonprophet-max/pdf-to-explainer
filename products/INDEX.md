@@ -14,6 +14,6 @@ Load one only when the source PDF (or the request) touches that product. Folders
 
 No fact files exist yet for Persistent Labs, FireFlow, Unfazed.dev, Lanni or Galactica: build only from the source PDF and the brand's design-system reference, and keep claims to what they state.
 
-Facts are as of **October 2026**. When a source PDF is newer and disagrees, the PDF wins — update the file. Product **status** (live, upcoming) always comes from the design system.
+Facts are as of **October 2026**. When a **public** source is newer and disagrees, it wins — update the file and cite it under Sources. When the source is **internal** (see SKILL.md → Sensitivity), never update these files from it: this folder ships in a public repo. Keep the file's version in the video and report the conflict to the person. Product **status** (live, upcoming) always comes from the design system.
 
-To add a product: create `products/<brand>/<product>/SKILL.md` with the same headings (What it is / Facts you may state / Keep these qualifiers / Don't say / Motifs / Lines that work / Sources) and add a row above.
+Only public facts go into these files. To add a product: create `products/<brand>/<product>/SKILL.md` with the same headings (What it is / Facts you may state / Keep these qualifiers / Don't say / Motifs / Lines that work / Sources) and add a row above.

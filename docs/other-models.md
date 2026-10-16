@@ -14,7 +14,7 @@ Keep the engine for captions, diagrams and brand, and generate only moving backd
 
 ## Fully generative cut
 1. Write `storyboard.json` as usual.
-2. `node scripts/export-prompts.mjs <slug>` → `<slug>-shots.md` / `.json` with exact start/end times (holds included), captions, highlights, visual notes and a prompt per shot.
+2. `node ~/explainer-studio/scripts/export-prompts.mjs <slug>` → `<slug>-shots.md` / `.json` with exact start/end times (holds included) and captions read from the engine composition, plus highlights, visual notes and a prompt per shot from the storyboard. For a fully generative cut, where `video.tsx` is still the template, add `--from-storyboard`: timings are then approximated from the storyboard with the same cadence.
 3. Generate each shot **without text** (video models still misspell). Clip length = shot length; if the model caps duration, generate the longest it allows and slow-hold the last frame for the hold.
 4. Assemble in order, burn in captions in post (word-by-word, one block at a time with 0.5 s between blocks, highlighted words in the brand accent, brand display font — the shot list names it), add the brand outro (logo from the design system's `plugins/<brand>-brand/skills/<brand>-brand/assets/`, name, URL, "by Persistent Labs").
 5. Keep the cadence: nothing new appears during a scene's last 1.15 s, 2 s after the conclusion.

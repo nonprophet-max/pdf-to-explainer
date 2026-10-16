@@ -170,10 +170,10 @@ const video: VideoDef = {
   title: 'Who sees what when you pay for AI',
   brand: 'privateinference',
   scenes: [
-    {id: 'hook', Stage: Hook, ticks: 120, stageTop: 680, stageBottom: 1600, caption: {top: 300, size: 104, lines: [{t: 'You pay for AI.', at: 4}, {t: "But who's *watching?", at: 42}]}},
+    {id: 'hook', Stage: Hook, ticks: 120, stageTop: 680, stageBottom: 1600, caption: {top: 300, size: 104, lines: [{t: 'You pay for AI.', at: 4}, {t: "But who's\n*watching?", at: 42}]}},
     {id: 'two-things', Stage: TwoThings, ticks: 150, stageTop: 900, stageBottom: 1600, caption: {top: 300, size: 100, lines: [{t: 'Two things give you *away:', at: 4}, {t: 'the *payment', at: 42}, {t: 'and the *prompt.', at: 70}]}},
     {id: 'usual-path', Stage: UsualPath, ticks: 180, stageTop: 620, stageBottom: 1600, caption: {size: 78, lines: [{t: 'On most services,', at: 2}, {t: 'someone sees *who *paid,', at: 30}, {t: 'reads *your *prompt,', at: 62}, {t: 'or *both.', at: 100}]}},
-    {id: 'pi-path', Stage: PiPath, ticks: 240, stageTop: 780, stageBottom: 1600, caption: { top: 200, size: 82, lines: [ {t: 'With *Private *Inference:', at: 2}, {t: 'Aztec hides *who *paid.', at: 34}, {t: 'Your prompt stays *encrypted', at: 100}, {t: "until it's inside a *secure *enclave.", at: 140}, ], }},
+    {id: 'pi-path', Stage: PiPath, ticks: 240, stageTop: 780, stageBottom: 1600, caption: {top: 200, size: 82, lines: [{t: 'With *Private *Inference:', at: 2}, {t: 'Aztec hides *who *paid.', at: 34}, {t: 'Your prompt\nstays *encrypted', at: 100}, {t: "until it's inside\na *secure *enclave.", at: 140}]}},
     {id: 'side-by-side', Stage: SideBySide, ticks: 120, stageTop: 520, stageBottom: 1600, caption: {top: 210, size: 104, lines: [{t: 'Payer *hidden.', at: 2}, {t: 'Prompt *hidden.', at: 18}]}},
   ],
   outro: {url: 'privateinference.gg', note: 'Upcoming'},

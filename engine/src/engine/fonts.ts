@@ -5,6 +5,7 @@ import {BrandPack} from './theme';
 
 export const useBrandFonts = (pack: BrandPack) => {
   const [handle] = useState(() => delayRender(`fonts for ${pack.id}`));
+  const [ready, setReady] = useState(false);
   useEffect(() => {
     Promise.all(
       pack.fonts.faces.map(async (f) => {
@@ -12,7 +13,11 @@ export const useBrandFonts = (pack: BrandPack) => {
         document.fonts.add(await face.load());
       }),
     )
-      .then(() => continueRender(handle))
+      .then(() => {
+        setReady(true);
+        continueRender(handle);
+      })
       .catch((e) => cancelRender(e));
   }, [handle, pack]);
+  return ready;
 };

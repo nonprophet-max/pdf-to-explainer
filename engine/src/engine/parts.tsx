@@ -40,19 +40,43 @@ export const Window: React.FC<{from?: number; to?: number; children?: React.Reac
 
 // ---------- captions ----------
 
-export type CaptionLine = {t: string; at?: number}; // at = earliest start (tick); the pause rule may push it later
+// at = earliest start (tick); the pause rule may push it later. A "\n" in t breaks the block there by hand.
+export type CaptionLine = {t: string; at?: number};
 
 const PAUSE_TICKS = CAPTION.pauseSec * TICK_FPS;
+
+const wordsOf = (t: string) => t.trim().split(/\s+/);
+const rowsOf = (t: string) => t.split('\n').map((r) => r.trim().split(/\s+/).filter(Boolean));
 
 /** When each caption block actually starts and lands, after applying the 0.5 s pause rule. */
 export const scheduleCaption = (lines: CaptionLine[]) => {
   let prevLand = -Infinity;
   return lines.map((l, i) => {
-    const words = l.t.split(' ').length;
+    const words = wordsOf(l.t).length;
     const start = Math.max(l.at ?? (i === 0 ? CAPTION.firstAtTicks : 0), prevLand + PAUSE_TICKS);
     const land = start + (words - 1) * CAPTION.wordGapTicks + CAPTION.settleTicks;
     prevLand = land;
     return {start, land, words};
+  });
+};
+
+// Logs "[caption-wrap] …" when the browser wraps a block so that one word sits alone on a line
+// (scripts/render.mjs --stills collects these). Hand breaks ("\n") are the author's choice and not reported.
+// Only in check renders (safe zones on), once the brand fonts are in.
+export const ChecksCtx = React.createContext(false);
+const useWrapCheck = (ref: React.RefObject<HTMLDivElement>, lines: CaptionLine[], size: number) => {
+  const on = React.useContext(ChecksCtx);
+  React.useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    el.querySelectorAll<HTMLElement>('[data-row]').forEach((row) => {
+      const tops = Array.from(row.children as HTMLCollectionOf<HTMLElement>).map((w) => w.offsetTop);
+      const perLine = tops.reduce<number[]>((acc, top, i) => (i > 0 && Math.abs(top - tops[i - 1]) < 2 ? (acc[acc.length - 1]++, acc) : [...acc, 1]), []);
+      if (perLine.length > 1 && perLine.includes(1)) {
+        const text = lines[Number(row.dataset.block)].t.replace(/[*]/g, '').replace(/\s+/g, ' ');
+        console.warn(`[caption-wrap] "${text}" at ${size} px wraps into ${perLine.length} lines (${perLine.join('+')} words)`);
+      }
+    });
   });
 };
 
@@ -61,50 +85,56 @@ export const Caption: React.FC<{lines: CaptionLine[]; size?: number; style?: Rea
   const C = useTheme();
   const t = useTick();
   const sched = scheduleCaption(lines);
+  const ref = React.useRef<HTMLDivElement>(null);
+  useWrapCheck(ref, lines, size);
   return (
-    <div style={{fontFamily: C.fonts.display, fontWeight: 500, fontSize: size, lineHeight: 1.12, color: C.text, letterSpacing: -1, ...style}}>
-      {lines.map((l, li) => (
-        <div key={li} style={{display: 'flex', flexWrap: 'wrap', columnGap: size * 0.26}}>
-          {l.t.split(' ').map((w, i, ws) => {
-            const hi = w.startsWith('*');
-            // consecutive highlighted words share one marker: square, touching inner edges
-            const joinL = hi && i > 0 && ws[i - 1].startsWith('*');
-            const joinR = hi && i < ws.length - 1 && ws[i + 1].startsWith('*');
-            const gap = size * 0.13;
-            const pad = size * 0.1;
-            const r = size * 0.14;
-            const s = spring({frame: t - (sched[li].start + i * CAPTION.wordGapTicks), fps: TICK_FPS, config: {damping: 11, mass: 0.5}});
-            const marker = hi && C.highlight === 'marker';
-            return (
-              <span
-                key={i}
-                style={{
-                  display: 'inline-block',
-                  color: marker ? C.ink : hi ? C.accentText : C.text,
-                  background: marker ? C.accent : undefined,
-                  padding: marker ? `0 ${joinR ? gap : pad}px 0 ${joinL ? gap : pad}px` : undefined,
-                  margin: marker ? `0 ${joinR ? -gap : -pad * 0.6}px 0 ${joinL ? -gap : -pad * 0.6}px` : undefined,
-                  borderRadius: marker ? `${joinL ? 0 : r}px ${joinR ? 0 : r}px ${joinR ? 0 : r}px ${joinL ? 0 : r}px` : undefined,
-                  opacity: Math.min(1, s * 2),
-                  transform: `translateY(${(1 - s) * 50}px) scale(${0.6 + 0.4 * s}) rotate(${(1 - s) * -6}deg)`,
-                  textShadow: marker ? 'none' : C.textShadow,
-                }}
-              >
-                {hi ? w.slice(1) : w}
-              </span>
-            );
-          })}
-        </div>
-      ))}
+    <div ref={ref} style={{fontFamily: C.fonts.display, fontWeight: 500, fontSize: size, lineHeight: 1.12, color: C.text, letterSpacing: -1, ...style}}>
+      {lines.map((l, li) => {
+        let n = 0; // word index within the block, across hand breaks
+        return rowsOf(l.t).map((ws, ri) => (
+          <div key={`${li}-${ri}`} data-row data-block={li} style={{display: 'flex', flexWrap: 'wrap', columnGap: size * 0.26}}>
+            {ws.map((w, i) => {
+              const hi = w.startsWith('*');
+              // consecutive highlighted words share one marker: square, touching inner edges
+              const joinL = hi && i > 0 && ws[i - 1].startsWith('*');
+              const joinR = hi && i < ws.length - 1 && ws[i + 1].startsWith('*');
+              const gap = size * 0.13;
+              const pad = size * 0.1;
+              const r = size * 0.14;
+              const s = spring({frame: t - (sched[li].start + n++ * CAPTION.wordGapTicks), fps: TICK_FPS, config: {damping: 11, mass: 0.5}});
+              const marker = hi && C.highlight === 'marker';
+              return (
+                <span
+                  key={i}
+                  style={{
+                    display: 'inline-block',
+                    color: marker ? C.ink : hi ? C.accentText : C.text,
+                    background: marker ? C.accent : undefined,
+                    padding: marker ? `0 ${joinR ? gap : pad}px 0 ${joinL ? gap : pad}px` : undefined,
+                    margin: marker ? `0 ${joinR ? -gap : -pad * 0.6}px 0 ${joinL ? -gap : -pad * 0.6}px` : undefined,
+                    borderRadius: marker ? `${joinL ? 0 : r}px ${joinR ? 0 : r}px ${joinR ? 0 : r}px ${joinL ? 0 : r}px` : undefined,
+                    opacity: Math.min(1, s * 2),
+                    transform: `translateY(${(1 - s) * 50}px) scale(${0.6 + 0.4 * s}) rotate(${(1 - s) * -6}deg)`,
+                    textShadow: marker ? 'none' : C.textShadow,
+                  }}
+                >
+                  {hi ? w.slice(1) : w}
+                </span>
+              );
+            })}
+          </div>
+        ));
+      })}
     </div>
   );
 };
 
-export const Label: React.FC<{title: string; sub?: string}> = ({title, sub}) => {
+/** Title + optional sub-line. Accent by default (ours); tone="neutral" for third parties and plain notes. */
+export const Label: React.FC<{title: string; sub?: string; tone?: 'accent' | 'neutral'}> = ({title, sub, tone = 'accent'}) => {
   const C = useTheme();
   return (
     <div style={{textAlign: 'center', fontFamily: C.fonts.body, whiteSpace: 'nowrap'}}>
-      <div style={{fontSize: 40, fontWeight: 600, color: C.accentText}}>{title}</div>
+      <div style={{fontSize: 40, fontWeight: 600, color: tone === 'neutral' ? C.text : C.accentText}}>{title}</div>
       {sub ? <div style={{fontSize: 29, color: C.grey, marginTop: 4}}>{sub}</div> : null}
     </div>
   );
@@ -416,7 +446,8 @@ export type GridRow = {name: string; sub?: string; marks: MarkKind[]; highlight?
 export const ComparisonGrid: React.FC<{top: number; columns: string[]; rows: GridRow[]; highlightColumn?: number; start?: number; rowH?: number}> = ({top, columns, rows, highlightColumn, start = 6, rowH = 172}) => {
   const C = useTheme();
   return (
-    <div style={{position: 'absolute', top, left: 50, right: 130, fontFamily: C.fonts.body}}>
+    // right: 170 keeps the right edge ≥ 30 px clear of the action-button zone (x 960) after the ×1.045 push-in
+    <div style={{position: 'absolute', top, left: 50, right: 170, fontFamily: C.fonts.body}}>
       <div style={{display: 'flex', alignItems: 'center', padding: '0 30px 16px', fontSize: 28, fontWeight: 600}}>
         <div style={{flex: 1}} />
         {columns.map((c, i) => (

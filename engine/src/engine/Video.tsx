@@ -8,7 +8,7 @@ import {useBrandFonts} from './fonts';
 import {DEFAULT_FORMATS, FORMATS, Format, FormatCtx, SAFE_ZONES, useFormat} from './format';
 import {Outro, OutroProps} from './Outro';
 import {CaptionBlock, Scene} from './Scene';
-import {Logo, clamp, scheduleCaption, useTick} from './parts';
+import {ChecksCtx, Logo, clamp, scheduleCaption, useTick} from './parts';
 import {ThemeCtx, ThemeName, getPack, makeTheme, useTheme} from './theme';
 
 export type StageProps = {
@@ -132,42 +132,47 @@ const SafeZones: React.FC = () => (
   </AbsoluteFill>
 );
 
-export type VideoProps = {safeZones?: boolean; brand?: string; cuts?: {id: string; frame: number}[]};
+/** Scene timing and captions as the engine renders them; scripts read this instead of storyboard.json. */
+export type Timing = {fps: number; total: number; outroStart: number; scenes: {id: string; start: number; end: number; seconds: number; captions: string[]}[]};
+
+export type VideoProps = {safeZones?: boolean; brand?: string; cuts?: {id: string; frame: number}[]; timing?: Timing};
 
 export const makeVideo = (def: VideoDef, format: Format, theme: ThemeName) => {
   const Comp: React.FC<VideoProps> = ({safeZones, brand}) => {
     const {fps} = useVideoConfig();
     const pack = getPack(brand || def.brand);
-    useBrandFonts(pack);
+    const fontsReady = useBrandFonts(pack);
     const C = makeTheme(pack, theme);
     const tl = timeline(def, fps);
     const outroStart = tl.total - tl.outro;
     return (
       <FormatCtx.Provider value={format}>
         <ThemeCtx.Provider value={C}>
-          <AbsoluteFill style={{background: C.bg}}>
-            <Background />
-            <Series>
-              {tl.scenes.map((s) => {
-                const dur = framesToTicks(s.frames, fps);
-                return (
-                  <Series.Sequence key={s.id} durationInFrames={s.frames} name={s.id}>
-                    {s.plate ? <Plate src={s.plate.replace('{format}', format)} frames={s.frames} /> : null}
-                    <Scene dur={dur} caption={s.caption} stageTop={s.stageTop} stageBottom={s.stageBottom}>
-                      <s.Stage dur={dur} cues={sceneCues(s)} />
-                    </Scene>
-                  </Series.Sequence>
-                );
-              })}
-              <Series.Sequence durationInFrames={tl.outro} name="outro">
-                {/* a video's own outro text (URL, status note) only applies to its own brand */}
-                <Outro {...(pack.id === def.brand ? def.outro : {})} />
-              </Series.Sequence>
-            </Series>
-            <Watermark hideFromTick={framesToTicks(outroStart, fps)} />
-            <Grain />
-            {safeZones && format === '9x16' ? <SafeZones /> : null}
-          </AbsoluteFill>
+          <ChecksCtx.Provider value={!!safeZones && fontsReady}>
+            <AbsoluteFill style={{background: C.bg}}>
+              <Background />
+              <Series>
+                {tl.scenes.map((s) => {
+                  const dur = framesToTicks(s.frames, fps);
+                  return (
+                    <Series.Sequence key={s.id} durationInFrames={s.frames} name={s.id}>
+                      {s.plate ? <Plate src={s.plate.replace('{format}', format)} frames={s.frames} /> : null}
+                      <Scene dur={dur} caption={s.caption} stageTop={s.stageTop} stageBottom={s.stageBottom}>
+                        <s.Stage dur={dur} cues={sceneCues(s)} />
+                      </Scene>
+                    </Series.Sequence>
+                  );
+                })}
+                <Series.Sequence durationInFrames={tl.outro} name="outro">
+                  {/* a video's own outro text (URL, status note) only applies to its own brand */}
+                  <Outro {...(pack.id === def.brand ? def.outro : {})} />
+                </Series.Sequence>
+              </Series>
+              <Watermark hideFromTick={framesToTicks(outroStart, fps)} />
+              <Grain />
+              {safeZones && format === '9x16' ? <SafeZones /> : null}
+            </AbsoluteFill>
+          </ChecksCtx.Provider>
         </ThemeCtx.Provider>
       </FormatCtx.Provider>
     );
@@ -182,13 +187,25 @@ export const compositionsFor = (def: VideoDef) => {
   // frame 0.3 s before each cut, for scripts/render.mjs --stills
   let at = 0;
   const cuts = tl.scenes.map((s) => ({id: s.id, frame: (at += s.frames) - Math.round(0.3 * fps)}));
+  const sec = (f: number) => +(f / fps).toFixed(3);
+  let from = 0;
+  const timing: Timing = {
+    fps,
+    total: sec(total),
+    outroStart: sec(total - tl.outro),
+    scenes: tl.scenes.map((s) => {
+      const start = from;
+      from += s.frames;
+      return {id: s.id, start: sec(start), end: sec(from), seconds: sec(s.frames), captions: blocksOf(s).flatMap((b) => b.lines.map((l) => l.t.replace(/\s+/g, ' ')))};
+    }),
+  };
   return (def.formats ?? DEFAULT_FORMATS).flatMap((format) =>
     (['dark', 'light'] as ThemeName[]).map((theme) => ({
       id: `${def.id}-${format}-${theme}`,
       component: makeVideo(def, format, theme),
       durationInFrames: total,
       fps,
-      defaultProps: {safeZones: false, brand: '', cuts} as VideoProps,
+      defaultProps: {safeZones: false, brand: '', cuts, timing} as VideoProps,
       ...FORMATS[format],
     })),
   );

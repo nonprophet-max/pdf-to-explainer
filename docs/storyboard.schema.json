@@ -12,7 +12,7 @@
       "properties": {
         "file": {"type": "string"},
         "pages": {"type": "integer"},
-        "sensitivity": {"enum": ["public", "internal", "confidential"], "description": "From markings in the source. Anything but public: leave internal-only facts out and list them in excluded."},
+        "sensitivity": {"enum": ["public", "internal", "confidential"], "description": "From markings in the source; one marked page makes the whole source internal. Anything but public: use only facts the product files, design system or cited public sources state (SKILL.md → Sensitivity), and list the rest in excluded."},
         "excluded": {"type": "array", "items": {"type": "string"}, "description": "What was left out and why (internal detail, no room, unclear claim)."}
       }
     },
@@ -30,13 +30,13 @@
         "properties": {
           "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
           "role": {"enum": ["hook", "problem", "context", "how", "solution", "proof", "comparison", "conclusion"], "description": "The last scene is always the conclusion."},
-          "caption": {"type": "array", "items": {"type": "string"}, "maxItems": 4, "description": "Caption blocks (one sentence or phrase each). They appear 0.5 s apart. A word starting with * is highlighted in the brand accent."},
+          "caption": {"type": "array", "items": {"type": "string"}, "maxItems": 4, "description": "Caption blocks (one sentence or phrase each), as in video.tsx; scripts warn when the two differ. They appear 0.5 s apart. A word starting with * is highlighted in the brand accent; \\n is a hand line break."},
           "visual": {"type": "string", "description": "What happens on stage, in one or two sentences."},
           "motifs": {"type": "array", "items": {"type": "string"}, "description": "Visual vocabulary items used (see docs/VIDEO-BIBLE.md)."},
-          "baseSeconds": {"type": "number", "description": "Planned minimum length before the hold. The engine extends it to fit the captions' reading time."},
+          "baseSeconds": {"type": "number", "description": "Planned minimum length before the hold, for planning only. The engine (video.tsx `ticks` and the reading-time rule) sets the real length; scripts read timing from the engine."},
           "claims": {
             "type": "array",
-            "items": {"type": "object", "required": ["text", "source"], "properties": {"text": {"type": "string"}, "source": {"type": "string", "description": "Page reference, e.g. p1"}}}
+            "items": {"type": "object", "required": ["text", "source"], "properties": {"text": {"type": "string"}, "source": {"type": "string", "description": "Where the fact comes from: a page of the source (p1, p1-p2), a product file (product:privateinference/vault-sessions), or a public source the PDF cites (public:EF blog, Oct 2026). No page needed for the last two."}}}
           },
           "plate": {
             "type": "object",

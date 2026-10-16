@@ -6,11 +6,13 @@
 //   node scripts/runway-plates.mjs <slug> [--brand <id>] [--formats 9x16] [--model gen4.5] [--scenes hook,pi-path] [--dry-run]
 //
 // Only scenes whose storyboard entry has a "plate" object are generated. Costs credits:
-// --dry-run prints each request and the estimated seconds without calling the API.
+// --dry-run prints each request and its seconds without calling the API. Scene lengths come from the
+// engine composition (video.tsx), not storyboard.json (--from-storyboard approximates them without the
+// engine); the prompts come from storyboard.json.
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
-import {GENERATIVE, args, readPack, readStoryboard, sceneTimes, videoDir} from './lib.mjs';
+import {GENERATIVE, args, engineFor, readPack, readStoryboard, timingFor, videoDir} from './lib.mjs';
 
 const a = args();
 const slug = a._[0];
@@ -18,7 +20,7 @@ if (!slug) {
   console.error('Usage: node scripts/runway-plates.mjs <slug> [--formats 9x16] [--model gen4.5] [--scenes a,b] [--dry-run]');
   process.exit(1);
 }
-const engine = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'engine');
+const engine = engineFor(a, slug);
 const sb = readStoryboard(engine, slug);
 const pack = readPack(engine, a.brand ?? sb.brand);
 const theme = pack.themes[sb.theme ?? 'dark'];
@@ -41,9 +43,10 @@ const promptFor = (scene, format) =>
     .join('. ')
     .slice(0, 1000);
 
-const times = Object.fromEntries(sceneTimes(sb).map((t) => [t.id, t]));
+const timing = await timingFor(a, engine, slug, sb, formats[0]);
+const times = Object.fromEntries(timing.scenes.map((t) => [t.id, t]));
 const jobs = sb.scenes
-  .filter((s) => s.plate && (!only || only.has(s.id)))
+  .filter((s) => s.plate && times[s.id] && (!only || only.has(s.id)))
   .flatMap((s) => formats.map((f) => ({s, f, duration: Math.min(10, Math.max(2, Math.ceil(times[s.id].seconds)))})));
 
 if (!jobs.length) {

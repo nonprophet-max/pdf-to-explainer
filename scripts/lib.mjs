@@ -3,13 +3,14 @@ import {execFileSync, spawnSync} from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import {fileURLToPath} from 'node:url';
+import {createRequire} from 'node:module';
+import {fileURLToPath, pathToFileURL} from 'node:url';
 
 export const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 export const ENGINE = path.join(ROOT, 'engine');
 export const DEFAULT_WORKSPACE = path.join(os.homedir(), 'explainer-studio');
 
-// Mirrors engine/src/engine/cadence.ts
+// Mirrors engine/src/engine/cadence.ts (for docs and shot lists; timings come from the engine)
 export const CADENCE = {holdSec: 1.15, conclusionHoldSec: 2, outroSec: 3.2, captionPauseSec: 0.5};
 
 export const pascal = (slug) => slug.replace(/(^|[-_ ]+)(\w)/g, (_, __, c) => c.toUpperCase());
@@ -47,30 +48,84 @@ export const readStoryboard = (engine, slug) => {
   return JSON.parse(fs.readFileSync(p, 'utf8'));
 };
 
-/** Scene start/end times in seconds, following the house cadence. */
-// Approximates the engine's timeline from the storyboard (the engine is the source of truth).
-const captionSeconds = (lines) => {
-  let land = -Infinity;
-  let words = 0;
-  lines.forEach((l, i) => {
-    const n = l.split(' ').length;
-    const start = Math.max(i === 0 ? 2 : 0, land + CADENCE.captionPauseSec * 30);
-    land = start + (n - 1) * 3 + 10;
-    words += n;
-  });
-  return (land + Math.max(1.5, words * 0.22) * 30) / 30;
+// Which engine a script works on: --workspace DIR if given; else this copy's engine if it has the video;
+// else the default workspace (~/explainer-studio), where new-video.mjs puts videos.
+export const engineFor = (a, slug) => {
+  if (a.workspace) return path.join(path.resolve(String(a.workspace)), 'engine');
+  if (!slug || fs.existsSync(videoDir(ENGINE, slug))) return ENGINE;
+  const ws = path.join(DEFAULT_WORKSPACE, 'engine');
+  if (fs.existsSync(videoDir(ws, slug))) {
+    console.log(`No "${slug}" in ${ENGINE}; using the workspace engine ${ws}`);
+    return ws;
+  }
+  console.error(`No video "${slug}" in ${ENGINE} or ${ws}. Scaffold it with new-video.mjs, or pass --workspace DIR.`);
+  process.exit(1);
 };
 
-export const sceneTimes = (sb) => {
+// Bundle the engine once and read compositions from it. The engine is the source of truth for timing
+// and captions: each composition carries `timing` (scene start/end, captions) and `cuts` in its props.
+export const openEngine = async (engine) => {
+  const require = createRequire(path.join(engine, 'package.json'));
+  const load = (m) => import(pathToFileURL(require.resolve(m)).href);
+  const {bundle} = await load('@remotion/bundler');
+  const renderer = await load('@remotion/renderer');
+  console.log('Bundling…');
+  const serveUrl = await bundle({entryPoint: path.join(engine, 'src', 'index.ts')});
+  const select = (id, inputProps = {}) => renderer.selectComposition({serveUrl, id, inputProps});
+  return {serveUrl, renderer, select};
+};
+
+// For a fully generative cut with no video.tsx: approximate the engine's timeline from storyboard.json,
+// in the same shape as a composition's `timing` prop. When video.tsx exists, use the composition instead.
+export const storyboardTiming = (sb) => {
+  const tick = 30;
+  const seconds = (s) => {
+    let land = -Infinity;
+    let words = 0;
+    s.caption.forEach((l, i) => {
+      const n = l.trim().split(/\s+/).length;
+      const start = Math.max(i === 0 ? 2 : 0, land + CADENCE.captionPauseSec * tick);
+      land = start + (n - 1) * 3 + 10;
+      words += n;
+    });
+    return Math.max(s.baseSeconds ?? 0, (land + Math.max(1.5, words * 0.22) * tick) / tick);
+  };
   let t = 0;
-  return sb.scenes.map((s, i) => {
-    const last = i === sb.scenes.length - 1;
-    const base = Math.max(s.baseSeconds ?? 0, captionSeconds(s.caption));
-    const len = base + (last ? CADENCE.conclusionHoldSec : CADENCE.holdSec);
-    const out = {id: s.id, start: t, end: t + len, seconds: len};
+  const scenes = sb.scenes.map((s, i) => {
+    const len = seconds(s) + (i === sb.scenes.length - 1 ? CADENCE.conclusionHoldSec : CADENCE.holdSec);
+    const out = {id: s.id, start: t, end: t + len, seconds: len, captions: s.caption};
     t += len;
     return out;
   });
+  return {fps: sb.fps ?? 60, total: t + CADENCE.outroSec, outroStart: t, scenes};
+};
+
+/** Timing from the engine composition, or from the storyboard with --from-storyboard or when there is no video.tsx. */
+export const timingFor = async (a, engine, slug, sb, format) => {
+  if (a['from-storyboard'] || !fs.existsSync(path.join(videoDir(engine, slug), 'video.tsx'))) {
+    console.log('Timing approximated from storyboard.json (no engine composition used).');
+    return storyboardTiming(sb);
+  }
+  const {select} = await openEngine(engine);
+  const {timing} = (await select(`${pascal(slug)}-${format}-${sb.theme ?? 'dark'}`)).props;
+  checkStoryboard(sb, timing);
+  return timing;
+};
+
+const plain = (s) => s.replace(/\*/g, '').replace(/\s+/g, ' ').trim();
+
+/** Warn when storyboard.json captions no longer match the scenes in video.tsx. */
+export const checkStoryboard = (sb, timing) => {
+  const byId = Object.fromEntries(timing.scenes.map((s) => [s.id, s]));
+  const warn = [];
+  for (const s of sb.scenes) {
+    const v = byId[s.id];
+    if (!v) warn.push(`storyboard scene "${s.id}" is not in video.tsx`);
+    else if (plain(s.caption.join(' ')) !== plain(v.captions.join(' '))) warn.push(`"${s.id}" captions differ: storyboard "${plain(s.caption.join(' / '))}", video "${plain(v.captions.join(' / '))}"`);
+  }
+  for (const v of timing.scenes) if (!sb.scenes.some((s) => s.id === v.id)) warn.push(`video scene "${v.id}" is not in storyboard.json`);
+  for (const w of warn) console.warn(`Warning: ${w} (using the video's version)`);
+  return warn;
 };
 
 export const run = (cmd, argv, opts = {}) => {
