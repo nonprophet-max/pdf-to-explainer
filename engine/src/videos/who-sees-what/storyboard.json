@@ -1,0 +1,68 @@
+{
+  "$schema": "../../../../docs/storyboard.schema.json",
+  "title": "Who sees what when you pay for AI",
+  "slug": "who-sees-what",
+  "source": {
+    "file": "who-sees-what-v3.pdf",
+    "pages": 2,
+    "sensitivity": "public",
+    "excluded": ["Per-product exit/escape details (no room in 35 s)", "Payment methods table"]
+  },
+  "products": ["private-mode", "aztec-payments", "landscape"],
+  "formats": ["9x16"],
+  "theme": "dark",
+  "fps": 60,
+  "scenes": [
+    {
+      "id": "hook",
+      "role": "hook",
+      "caption": ["You pay for AI.", "But who's *watching?"],
+      "visual": "A person at a laptop. A coin (payment) and a speech bubble (prompt) pop out and float; four eyes open around the frame and look at the person.",
+      "motifs": ["user", "coin", "bubble", "eye"],
+      "baseSeconds": 4,
+      "claims": [],
+      "plate": {"prompt": "Dim room of layered paper silhouettes, a single warm glow at the center like a laptop screen, faint shapes of watching eyes in the far background"}
+    },
+    {
+      "id": "two-things",
+      "role": "problem",
+      "caption": ["Two things give you *away:", "the *payment", "and the *prompt."],
+      "visual": "Coin and bubble split onto two dashed lanes labelled PAYMENT (who knows who paid?) and PROMPT (who reads it?).",
+      "motifs": ["coin", "bubble", "lane"],
+      "baseSeconds": 5,
+      "claims": [{"text": "Two things give you away: the payment and the prompt.", "source": "p1"}]
+    },
+    {
+      "id": "usual-path",
+      "role": "context",
+      "caption": ["On most services,", "someone sees *who *paid,", "reads *your *prompt,", "or *both."],
+      "visual": "Coin travels past 'Card or chain' and 'Provider'; bubble past 'Relay', 'Host', 'Model'. An eye opens at each stop and follows it.",
+      "motifs": ["coin", "bubble", "card", "eye", "lane"],
+      "baseSeconds": 6,
+      "claims": [{"text": "Payment links requests to an account or wallet; relays and hosts can read prompts", "source": "p1-p2"}]
+    },
+    {
+      "id": "pi-path",
+      "role": "solution",
+      "caption": ["With *Private *Inference:", "Aztec hides *who *paid.", "Your prompt stays *encrypted", "until it's inside a *secure *enclave."],
+      "visual": "Coin sinks into Aztec fog (question marks). Bubble gets a padlock, passes CDN and Supplier (closed eyes, 'sees ciphertext'), unlocks inside the glowing enclave.",
+      "motifs": ["fog", "coin", "lock", "bubble", "card", "eye-closed", "enclave"],
+      "baseSeconds": 8,
+      "claims": [
+        {"text": "Paid privately on Aztec: payer and amount hidden", "source": "p1"},
+        {"text": "CDN, PI and supplier see ciphertext; plaintext only inside the enclave (private mode)", "source": "p1"}
+      ],
+      "plate": {"prompt": "Soft drifting paper fog on one side, a warm golden glowing box on the other, calm and protective mood"}
+    },
+    {
+      "id": "side-by-side",
+      "role": "conclusion",
+      "caption": ["Payer *hidden.", "Prompt *hidden."],
+      "visual": "Comparison grid, Private Inference row highlighted: payer hidden / prompt hidden for PI, zkAPI, Venice, OpenRouter, AntSeed.",
+      "motifs": ["grid"],
+      "baseSeconds": 4,
+      "claims": [{"text": "Side-by-side table, each product in its most private mode", "source": "p2"}]
+    }
+  ],
+  "outro": {"tagline": "Access AI privately."}
+}

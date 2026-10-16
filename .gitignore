@@ -1,0 +1,8 @@
+node_modules/
+engine/out/
+engine/public/plates/
+*.mp4
+*.mov
+*.pdf
+.DS_Store
+.env

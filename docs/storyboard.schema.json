@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Explainer storyboard",
+  "description": "Model-agnostic description of an explainer video. The engine, the Runway plate generator and the shot-list exporter all read it.",
+  "type": "object",
+  "required": ["title", "slug", "scenes"],
+  "properties": {
+    "title": {"type": "string"},
+    "slug": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+    "source": {
+      "type": "object",
+      "properties": {
+        "file": {"type": "string"},
+        "pages": {"type": "integer"},
+        "sensitivity": {"enum": ["public", "internal", "confidential"], "description": "From markings in the source. Anything but public: leave internal-only facts out and list them in excluded."},
+        "excluded": {"type": "array", "items": {"type": "string"}, "description": "What was left out and why (internal detail, no room, unclear claim)."}
+      }
+    },
+    "products": {"type": "array", "items": {"type": "string"}, "description": "Product subskills loaded from products/<name>/SKILL.md."},
+    "formats": {"type": "array", "items": {"enum": ["9x16", "16x9"]}, "default": ["9x16"], "description": "Vertical by default. Add 16x9 only when landscape is asked for (and set formats in video.tsx too)."},
+    "theme": {"enum": ["dark", "light"]},
+    "fps": {"type": "integer", "default": 60},
+    "scenes": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "object",
+        "required": ["id", "role", "caption", "visual", "baseSeconds"],
+        "properties": {
+          "id": {"type": "string", "pattern": "^[a-z0-9-]+$"},
+          "role": {"enum": ["hook", "problem", "context", "how", "solution", "proof", "comparison", "conclusion"], "description": "The last scene is always the conclusion."},
+          "caption": {"type": "array", "items": {"type": "string"}, "maxItems": 4, "description": "Caption lines. A word starting with * is highlighted in the accent color."},
+          "visual": {"type": "string", "description": "What happens on stage, in one or two sentences."},
+          "motifs": {"type": "array", "items": {"type": "string"}, "description": "Visual vocabulary items used (see brand/BRAND.md)."},
+          "baseSeconds": {"type": "number", "description": "Animation + reading time before the hold. video.tsx ticks = baseSeconds × 30."},
+          "claims": {
+            "type": "array",
+            "items": {"type": "object", "required": ["text", "source"], "properties": {"text": {"type": "string"}, "source": {"type": "string", "description": "Page reference, e.g. p1"}}}
+          },
+          "plate": {
+            "type": "object",
+            "description": "Optional generated background (Runway or another model). No text in plates.",
+            "required": ["prompt"],
+            "properties": {"prompt": {"type": "string"}, "seed": {"type": "integer"}}
+          }
+        }
+      }
+    },
+    "outro": {
+      "type": "object",
+      "properties": {"tagline": {"type": "string"}, "url": {"type": "string"}, "note": {"type": "string", "description": "Optional status line, e.g. 'Now on Aztec testnet'."}}
+    }
+  }
+}
