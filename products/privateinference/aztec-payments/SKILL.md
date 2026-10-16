@@ -14,6 +14,7 @@ Pay for AI on Aztec, a privacy-preserving network, so the chain doesn't show who
 - Fund with crypto; one wallet for every model.
 
 ## Keep these qualifiers
+- **Status:** the Persistent Labs design system lists Private Inference as an **upcoming** product. Don't present it as live; put the status in the outro note.
 - Hiding the payer on chain is not the same as unlinkable usage: in private mode the PI ledger still ties requests to one account (vault sessions remove the account — see vault-sessions).
 - USDC on Base is public on chain; only the Aztec route hides the payer.
 
@@ -22,7 +23,7 @@ Pay for AI on Aztec, a privacy-preserving network, so the chain doesn't show who
 - "Nobody knows you paid" if the video also shows an account.
 
 ## Motifs
-Gold `Coin` sinks into drifting `Fog` (Aztec) and fades; gold "?" marks pop in the fog; label "Aztec — payer and amount hidden". For an anonymous payer, drop a `Mask` on the coin.
+Accent `Coin` sinks into drifting `Fog` (Aztec) and fades; accent "?" marks pop in the fog; label "Aztec — payer and amount hidden". For an anonymous payer, drop a `Mask` on the coin.
 
 ## Lines that work
 - "Aztec hides *who *paid."

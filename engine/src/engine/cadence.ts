@@ -24,3 +24,13 @@ export const framesToTicks = (frames: number, fps: number) => (frames * TICK_FPS
 // last caption word lands, then 0.22 s per caption word, at least 1.5 s.
 export const baseTicksFor = (lastWordLandsAtTick: number, captionWords: number) =>
   Math.ceil(lastWordLandsAtTick + Math.max(1.5, captionWords * 0.22) * TICK_FPS);
+
+// Caption blocks: each line (sentence or phrase) is a block. A block starts no sooner than
+// 0.5 s after the previous block has fully landed — including the gap after a scene's first line —
+// so viewers can take in one sentence before the next appears.
+export const CAPTION = {
+  pauseSec: 0.5,
+  wordGapTicks: 3, // between words of one block
+  settleTicks: 10, // spring settle after the last word starts
+  firstAtTicks: 2, // default start of a scene's first block
+};

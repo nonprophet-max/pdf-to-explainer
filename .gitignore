@@ -6,3 +6,7 @@ engine/public/plates/
 *.pdf
 .DS_Store
 .env
+.design-system/
+engine/src/brand-packs/
+engine/public/brands/
+.remotion/

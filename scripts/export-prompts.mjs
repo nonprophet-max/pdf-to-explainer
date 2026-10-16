@@ -5,7 +5,7 @@
 //   node scripts/export-prompts.mjs <slug> [--format 9x16|16x9] [--out DIR]
 import fs from 'node:fs';
 import path from 'node:path';
-import {CADENCE, args, readStoryboard, sceneTimes, tokens} from './lib.mjs';
+import {CADENCE, GENERATIVE, args, readPack, readStoryboard, sceneTimes} from './lib.mjs';
 
 const a = args();
 const slug = a._[0];
@@ -15,11 +15,11 @@ if (!slug) {
 }
 const engine = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'engine');
 const sb = readStoryboard(engine, slug);
-const tk = tokens();
-const theme = tk.themes[sb.theme ?? tk.defaultTheme];
+const pack = readPack(engine, a.brand ?? sb.brand);
+const theme = pack.themes[sb.theme ?? 'dark'];
 const format = a.format ?? '9x16';
 const times = sceneTimes(sb);
-const style = tk.generative.stylePrompt.replace('{bg}', theme.bg);
+const style = `${GENERATIVE.stylePrompt}, palette ${theme.bg} with one accent ${theme.accent}`;
 const fmt = (s) => s.toFixed(2);
 const clean = (line) => line.replace(/\*/g, '');
 
@@ -31,17 +31,17 @@ const shots = sb.scenes.map((s, i) => ({
   captions: s.caption.map(clean),
   highlight: s.caption.flatMap((l) => l.split(' ').filter((w) => w.startsWith('*')).map((w) => clean(w).replace(/[.,:;!?]+$/, ''))),
   visual: s.visual,
-  prompt: [s.plate?.prompt ?? s.visual, style, tk.generative.rules].map((x) => x.trim().replace(/\.$/, '')).join('. ') + '.',
+  prompt: [s.plate?.prompt ?? s.visual, style, GENERATIVE.rules].map((x) => x.trim().replace(/\.$/, '')).join('. ') + '.',
 }));
 const total = times.at(-1).end + CADENCE.outroSec;
 
 const md = [
   `# ${sb.title} — shot list`,
   ``,
-  `Format ${format} · theme ${sb.theme ?? tk.defaultTheme} · total ${fmt(total)} s · silent`,
+  `Brand ${pack.name}${pack.component ? ` · ${pack.component.name}` : ''} · format ${format} · theme ${sb.theme ?? 'dark'} · total ${fmt(total)} s (approx.; the engine is exact) · silent`,
   ``,
-  `Cadence: each scene ends with a ${CADENCE.holdSec} s hold (nothing new appears), the last content scene with a ${CADENCE.conclusionHoldSec} s hold, then a ${CADENCE.outroSec} s brand outro.`,
-  `Generate visuals without text; add captions in post (kinetic, word by word, highlighted words in ${theme.accentText}).`,
+  `Cadence: caption blocks appear ${CADENCE.captionPauseSec} s apart (after the previous block has landed, including after each scene's first line); each scene ends with a ${CADENCE.holdSec} s hold, the last content scene with a ${CADENCE.conclusionHoldSec} s hold, then a ${CADENCE.outroSec} s brand outro.`,
+  `Generate visuals without text; add captions in post (kinetic, word by word, highlighted words ${theme.highlight === 'marker' ? `on an ${theme.accent} marker` : `in ${theme.accentText}`}, font ${pack.fonts.display}).`,
   ``,
   ...shots.flatMap((s) => [
     `## ${s.id} (${s.role}) · ${s.start}–${s.end} s`,
@@ -58,7 +58,7 @@ const md = [
   ]),
   `## outro · ${fmt(times.at(-1).end)}–${fmt(total)} s`,
   ``,
-  `Logo spins in, "${tk.name}", "${sb.outro?.tagline ?? tk.tagline}", URL pill "${tk.url}"${sb.outro?.note ? `, note "${sb.outro.note}"` : ''}.`,
+  `Logo spins in, "${pack.name}"${pack.component ? ` with "${pack.component.name}"` : ''}${sb.outro?.tagline ? `, "${sb.outro.tagline}"` : ''}${(sb.outro?.url ?? pack.url) ? `, URL pill "${sb.outro?.url ?? pack.url}"` : ''}${sb.outro?.note ? `, note "${sb.outro.note}"` : ''}${pack.endorsement ? `, "${pack.endorsement}"` : ''}.`,
   ``,
 ].join('\n');
 

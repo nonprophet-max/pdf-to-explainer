@@ -1,117 +1,115 @@
 ---
 name: pdf-to-explainer
-description: Turn a PDF (or any document) into a short, silent, kinetic 2.5D paper-cutout explainer video in the Private Inference brand, vertical 9:16 for TikTok, Reels and Shorts, dark or light, with optional Runway-generated background plates. Use whenever someone hands over a PDF, one-pager, report or doc and asks for a video, explainer, animation, reel, short or clip from it — even with no other instructions.
+description: Turn a PDF (or any document) into a short, silent, kinetic 2.5D paper-cutout explainer video — vertical 9:16 for TikTok, Reels and Shorts — in any brand or sub-brand of the Persistent Labs design system (Persistent Labs, FireFlow and its parts, Unfazed.dev, Lanni, Private Inference, Galactica), dark or light, with optional Runway-generated backgrounds. Use whenever someone hands over a PDF, one-pager, report or doc and asks for a video, explainer, animation, reel, short or clip from it — even with no other instructions.
 ---
 
 # PDF → explainer video
 
-You turn a document into a 30–45 second explainer that a muted viewer understands: one idea per scene, captions that spring in word by word, a small cast of paper-cutout objects that mean the same thing every time, and a fixed cadence.
-
-This skill is self-contained:
+You turn a document into a 30–45 second vertical explainer a muted viewer understands: one idea per scene, captions that arrive one sentence at a time, a small cast of paper-cutout objects that always mean the same thing, and a fixed cadence. The look and rhythm are this skill's; the **brand** — palette, type, logo, voice, product status — comes from the Persistent Labs design system.
 
 | Path | What it is | When to read |
 |---|---|---|
-| `brand/BRAND.md` | Brand bible: palettes, type, logo, motion, visual vocabulary, voice, claims discipline | **Always**, before the storyboard |
-| `brand/tokens.json` | Machine values the engine uses | When changing look |
-| `products/INDEX.md` | Product subskills and when to load each | **Always** skim; then load only the matching `products/<name>/SKILL.md` |
-| `engine/` | Remotion engine: `src/engine/parts.tsx` (components), `Scene.tsx`, `Video.tsx`, `cadence.ts` | When building scenes |
-| `engine/src/videos/who-sees-what/` | Complete reference video + its storyboard | Before writing your first scene |
+| `docs/VIDEO-BIBLE.md` | Cadence, format, safe zones, look, motion, visual vocabulary, copy and claims rules | **Always**, first |
+| `scripts/brands.mjs` | Syncs the design system and builds brand packs; `list` / `info <brand>` | **Always**, to pick the brand |
+| `.design-system/plugins/<brand>-brand/…` | The chosen brand's own skill and reference (voice, status, approved lines) | **Always**, for the chosen brand (`brands.mjs info` prints the paths) |
+| `products/INDEX.md` | Product fact files per brand, and when to load each | Skim; load only matching files |
+| `engine/src/videos/who-sees-what/` | Complete reference video + storyboard | Before writing your first scene |
+| `engine/src/engine/parts.tsx` | Components (the visual vocabulary) | When building scenes |
 | `docs/storyboard.schema.json` | Storyboard format | When writing `storyboard.json` |
-| `docs/other-models.md` | Using this with other video models | Only if not building with the engine |
-| `scripts/` | `new-video`, `render`, `runway-plates`, `export-prompts` | Throughout |
+| `docs/other-models.md` | Other agents and video models | Only if not building with the engine |
 
 ## Defaults — don't ask, just build
 
-A bare "make a video from this PDF" is a complete request. Use these unless the person said otherwise, and state them in one line when you deliver:
+"Make a video from this PDF" is a complete request. Use these unless the person said otherwise, and state them in one line when you deliver:
 
-- **Format:** vertical 9:16 (1080×1920, 60 fps) for TikTok, Reels and Shorts, with phone safe zones respected. 16:9 only if someone explicitly asks for landscape (add `formats: ['9x16', '16x9']` to the VideoDef and `--formats 9x16,16x9` when rendering).
-- **Theme:** the brand default (`tokens.json → defaultTheme`, dark). Light on request; both are one flag.
-- **Length:** 30–45 s including holds and outro → usually 5–7 content scenes.
-- **Audio:** none. Silent, caption-led, readable on mute.
-- **Plates:** none, unless the person asks for Runway / generated visuals.
+- **Brand:** the one the person names; else the product the PDF is clearly about (a PDF about Private Inference → `privateinference`); else the parent, `persistent-labs`. Sub-brands are explicit picks (e.g. `fireflow/memorytree`): they keep the product identity with their own accent and label.
+- **Format:** vertical 9:16, 1080×1920, 60 fps. Landscape only if asked (see Building scenes).
+- **Theme:** dark. Light, or both, on request.
+- **Length:** 30–45 s → usually 5–7 content scenes. **Audio:** none. **Plates:** none unless asked.
 
-Only stop to ask if the PDF can't be read, or it is marked internal/confidential **and** the person wants it public (see Sensitivity).
+Ask only if the PDF can't be read, the brand is genuinely ambiguous between two products, or the source is internal/confidential **and** the person wants it public.
 
 ## Workflow
 
-1. **Read the source.** `pdftotext -layout <file> -` (install poppler with `brew install poppler` if missing). Claude can also Read the PDF directly. Note page numbers for claims.
-2. **Load context.** Read `brand/BRAND.md`. Match the source against `products/INDEX.md` and read only the product files that apply. Product files carry approved facts, required qualifiers (beta, testnet...) and lines that already work.
-3. **Check sensitivity.** Look for "internal", "confidential", "draft", "not for distribution", staging URLs, unannounced dates or numbers. If present: build only from facts that are public (in a product file or clearly public in the source), list everything else under `source.excluded`, and tell the person what you left out.
-4. **Storyboard** (below). Write `storyboard.json`. For simple requests don't wait for approval — show the storyboard table alongside the finished video.
-5. **Scaffold:** `node scripts/new-video.mjs <slug> --title "<Title>"`. This creates (once) a private workspace at `~/explainer-studio` with the engine installed, then `engine/src/videos/<slug>/` with `video.tsx`, `storyboard.json`, `plates.json`. Work there, not in this repo: source material must never land in the public skill.
-6. **Build** one React component per scene in `video.tsx` from `parts.tsx` components. Copy patterns from the reference video. Set each scene's `ticks = baseSeconds × 30`.
-7. **Check layouts:** `node scripts/render.mjs <slug> --stills --themes dark` renders the frame just before each cut, with the phone safe zones overlaid in red. Look at every one (Claude: Read the PNGs). Fix overlaps, orphaned caption words, things off-stage, and any caption or key label inside a red zone.
-8. **Render:** `node scripts/render.mjs <slug>` → `engine/out/<slug>-<format>-<theme>.mp4`. Add `--themes dark,light` for both. Copy finals where the person wants them (Desktop by default).
-9. **Deliver:** the files, the storyboard table, what you left out and why, and any claim the person should double-check (comparisons especially).
+1. **Read the source:** `pdftotext -layout <file> -` (install poppler if missing), or Read the PDF. Note page numbers.
+2. **Load the rules:** `docs/VIDEO-BIBLE.md`.
+3. **Pick the brand:** `node scripts/brands.mjs sync` (fetches or updates the design system), then `node scripts/brands.mjs list` and `info <brand>`. Read the brand's design-system `SKILL.md` and reference (paths printed by `info`) for voice, status, approved lines and do/avoid lists.
+4. **Load product facts** from `products/INDEX.md` that match the source and brand.
+5. **Check sensitivity:** "internal", "confidential", "draft", staging URLs, unannounced dates or numbers. If present, build only from public facts, list the rest in `source.excluded`, and say what you left out.
+6. **Storyboard** (below) → `storyboard.json`. For simple requests don't wait for approval; show the storyboard table with the finished video.
+7. **Scaffold:** `node scripts/new-video.mjs <slug> --brand <id> --title "<Title>"`. This creates or upgrades a private workspace at `~/explainer-studio` (engine installed, design system synced) and `engine/src/videos/<slug>/`. Work there — never put source material in the skill repo.
+8. **Build** `video.tsx`: one Stage per scene, captions in the scene list. Copy patterns from the reference video.
+9. **Check:** `node scripts/render.mjs <slug> --stills` → the frame 0.3 s before each cut, safe zones overlaid in red. Look at every one (Claude: Read the PNGs). Fix overlaps, orphaned caption words, anything off-stage, and any caption or key label in a red zone. With `--themes light` too if delivering light.
+10. **Render:** `node scripts/render.mjs <slug>` (`--themes dark,light` for both; `--brand <id>` restyles the same video as another brand — identity and outro only, so captions that name a product still need rewriting). Copy finals where the person wants them (Desktop by default).
+11. **Deliver:** files, brand used, storyboard table, what you left out and why, claims to double-check.
 
 ## Storyboard
 
 ### The arc
-Pick 5–7 scenes from this order. Every video has a hook and a conclusion; the conclusion is always last.
+5–7 scenes in this order. Every video has a hook and a conclusion; the conclusion is last.
 
-| Role | Job | Typical length |
+| Role | Job | Blocks |
 |---|---|---|
-| `hook` | One question or tension a stranger feels in 3 s | 3.5–4 s |
-| `problem` | Name the two (max three) things at stake | 4–5 s |
-| `context` | Show how it usually works and where it goes wrong | 5–6 s |
-| `how` / `solution` | Show our way, step by step on the same stage | 6–8 s |
-| `proof` | A mechanism detail, safeguard or number that makes it believable | 5–6 s |
-| `comparison` | Side by side, ours highlighted (use landscape facts) | 4–5 s |
-| `conclusion` | The takeaway in 2–5 words per line | 3.5–4.5 s |
+| `hook` | One tension a stranger feels in 3 s | 2 |
+| `problem` | The two (max three) things at stake | 2–3 |
+| `context` | How it usually works, where it goes wrong | 3–4 |
+| `how` / `solution` | Our way, step by step on the same stage | 3–4 |
+| `proof` | A mechanism, safeguard or number that makes it believable | 2–3 |
+| `comparison` | Side by side, ours highlighted | 1–2 |
+| `conclusion` | The takeaway, 2–5 words per block | 2 |
 
-Then the engine adds the closing brand animation. Use `outro.note` for a status qualifier ("Sessions now on Aztec testnet").
+Then the engine adds the closing brand animation. Use `outro.note` for status ("Upcoming", "On testnet"); `outro.tagline` only for an approved line.
 
 ### Language
-Follow BRAND.md → Voice. In short: 2–4 caption lines per scene, ~6–16 words, plain words, "you"/"we", fragments welcome, 1–3 `*highlighted` words per scene, digits for numbers, no hype, no exclamation marks. Each caption claim must be in `claims` with a page reference. Keep source qualifiers.
+The brand's voice (from its design-system reference) comes first. Then VIDEO-BIBLE → Copy: each caption **block** is one sentence or phrase that stands alone, because it gets its own beat; 2–4 blocks, ~6–16 words per scene; 1–3 `*highlighted` words; every claim sourced in `claims`.
 
-### Timing
-Times inside scenes are **ticks** (30 per second, at any fps).
-- Caption lines: first at tick 2–4; later lines start when the previous visual beat lands (≈ every 25–40 ticks). Words land 3 ticks apart.
-- Base length: `lastWordLands + max(1.5 s, 0.22 s × captionWords)`, and never before the last animation settles. `cadence.ts → baseTicksFor()` computes it; `captionLandsAt()` in parts gives `lastWordLands`.
-- **Cadence (enforced by the engine — don't add your own):** each content scene + **1.15 s** hold → next scene; the conclusion + **2 s** hold → closing brand animation (3.2 s).
-- Total = Σ base + 1.15 × (scenes − 1) + 2 + 3.2. Aim for 30–45 s.
-
-### Visuals
-Use the visual vocabulary from BRAND.md so meaning stays consistent (coin = payment, bubble = prompt, open eye = can see, closed eye = can't, fog = privacy layer, gold box = enclave...). One stage per scene, objects moving along lanes; ours is gold. Reuse the same positions across scenes when a story continues (payment lane left, prompt lane right).
+### Timing — the engine does it
+- Caption blocks: first at tick 2; each next block **0.5 s after the previous one has landed** (this includes the gap after the title/first sentence). Give a block an `at` only to make it wait for a visual beat; the engine never starts it earlier than the pause rule allows.
+- Scene length = max(`ticks` you set, last block landed + reading time 0.22 s/word, min 1.5 s).
+- Then **1.15 s hold** per scene; **2 s hold** after the conclusion; then the 3.2 s brand outro.
+- Aim for 30–45 s total; `npx remotion compositions src/index.ts` (in `engine/`) prints each video's length.
 
 ## Building scenes
 
 ```tsx
-const Example: React.FC<{dur: number}> = ({dur}) => {
-  const t = useTick();                                   // ticks
-  const y = interpolate(t, [30, 90], [860, 1500], clamp);
+// a Stage draws the 9:16 stage; cues[i] = tick at which caption block i starts
+const Gateway: React.FC<StageProps> = ({cues}) => {
+  const t = useTick();
+  const y = interpolate(t, [cues[1], cues[1] + 50], [860, 1350], clamp);
   return (
-    <Scene dur={dur} caption={{top: 220, size: 88, lines: [{t: 'Your prompt stays *encrypted', at: 2}, {t: 'until the *enclave.', at: 40}]}}>
-      <At x={540} y={1130}><Pop delay={10}><Card label="Gateway" sub="sees ciphertext" /></Pop></At>
-      <At x={720} y={1070}><Eye closed delay={50} /></At>
+    <>
+      <At x={540} y={1050}><Pop delay={8}><Card label="Gateway" sub="sees ciphertext" /></Pop></At>
+      <At x={380} y={990}><Eye closed delay={cues[1] + 20} /></At>
       <At x={540} y={y}><Bubble dark={1} /></At>
-    </Scene>
+    </>
   );
 };
+
+const scenes: SceneDef[] = [
+  {id: 'gateway', Stage: Gateway, caption: {lines: [{t: 'Your prompt stays *encrypted.'}, {t: 'Only the *enclave can read it.'}]}, stageTop: 780, stageBottom: 1600},
+];
 ```
 
-- **Coordinates are 9:16** (1080 wide, 1920 tall). Captions sit at the top (`top` 200–300); the stage is roughly y 760–1600.
-- **Phone safe zones** (`format.ts → SAFE_ZONES`): the status bar (y < 140), the action-button column (x > 960, y 700–1600) and the caption/nav band (y > 1600) are covered by TikTok/Reels UI. Captions, labels, cards and anything the viewer must read stay out of them; lanes, eyes and background shapes may pass through.
-- Landscape (only on request): with `formats` including `'16x9'`, captions move to a left column and the stage region `stageTop..stageBottom` is scaled into the right side; set those to the stage's real extent.
-- A caption that changes halfway: pass an array of blocks with `show: [fromTick, toTick]`, and wrap each half's stage in `<Window from to>`.
-- Eyes: always `delay` + `seed`; give `look` toward what they watch (target minus eye position).
-- Never use `useCurrentFrame` directly in scenes; use `useTick`, `useSpr`, `useRamp`.
+- **Coordinates are 9:16** (1080×1920). Captions sit on top (`top` 200–300); the stage is roughly y 760–1600; x 80–960.
+- **Safe zones:** keep anything readable out of the top 140 px, the right 120 px between y 700–1600, and the bottom 320 px. Set `stageTop`/`stageBottom` to the stage's real extent.
+- Sync visuals to captions with `cues`; use `useTick`, `useSpr`, `useRamp` — never `useCurrentFrame`.
+- Brand comes from the pack: use `useTheme()` colors (`accent`, `text`, `grey`, `success`…) and `C.fonts`; never hard-code brand colors, fonts or logos.
+- A caption that changes halfway: pass an array of blocks with `show: [fromTick, toTick]` and wrap each half's stage in `<Window from to>`.
+- Landscape (only on request): add `formats: ['9x16', '16x9']` to the VideoDef and render with `--formats 9x16,16x9`; captions move left and the stage region scales into the right.
 
-## Runway plates (optional, Claude + Runway)
+## Runway plates (optional)
 
-Generated moving backdrops behind scenes, composited under the engine's captions and diagrams, so text and brand stay sharp.
+Text-free moving backdrops behind scenes; the engine keeps captions, diagrams and brand sharp on top.
 
-1. Add `"plate": {"prompt": "..."}` to the scenes that benefit (usually hook and solution). Describe mood and shapes only — no text, logos or faces. Brand style and palette are appended from `tokens.json → generative`.
-2. `node scripts/runway-plates.mjs <slug> --dry-run` to see prompts and seconds (costs money), then run without `--dry-run` with `RUNWAYML_API_SECRET` set. Uses Runway `gen4.5` text-to-video at 720:1280 / 1280:720, one clip per scene and format (2–10 s, looped to the scene length).
-3. It downloads to `engine/public/plates/<slug>/` and writes `plates.json`; re-render. Plates are tinted by `plateOpacity` so captions stay readable.
-
-For a fully generative cut on another model, see `docs/other-models.md` and `scripts/export-prompts.mjs`.
+1. Add `"plate": {"prompt": "..."}` to scenes that benefit (usually hook and solution): mood and shapes only. The brand's background and accent are appended automatically.
+2. `node scripts/runway-plates.mjs <slug> --dry-run` (shows prompts and seconds — generation costs credits), then without `--dry-run` with `RUNWAYML_API_SECRET` set. Runway `gen4.5` text-to-video, 720:1280, one clip per scene (2–10 s, looped).
+3. It writes `public/plates/<slug>/` and `plates.json`; re-render.
 
 ## Done checklist
-- [ ] Every scene readable on mute; no orphaned single words on a caption line
-- [ ] Highlights on the words that matter, max 3 per scene
-- [ ] Every claim traced to a page; qualifiers kept (beta, testnet, private mode, dates)
+- [ ] Brand chosen and stated; its design-system voice, status and approved lines respected
+- [ ] Caption blocks stand alone; no orphaned single words; 1–3 highlights per scene
+- [ ] Every claim traced to a page; qualifiers and product status kept
 - [ ] Nothing internal from a marked source; exclusions listed
-- [ ] Stills checked with safe zones; no caption or key label under platform UI; nothing clipped or overlapping
-- [ ] Total 30–45 s; holds come from the engine, not from padding inside scenes
-- [ ] Delivered: files + storyboard table + exclusions + claims to double-check
+- [ ] Stills checked with safe zones in each delivered theme
+- [ ] 30–45 s; cadence left to the engine
+- [ ] Delivered: files + brand + storyboard table + exclusions + claims to double-check

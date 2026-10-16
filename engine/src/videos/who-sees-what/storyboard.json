@@ -8,7 +8,8 @@
     "sensitivity": "public",
     "excluded": ["Per-product exit/escape details (no room in 35 s)", "Payment methods table"]
   },
-  "products": ["private-mode", "aztec-payments", "landscape"],
+  "brand": "privateinference",
+  "products": ["privateinference/private-mode", "privateinference/aztec-payments", "privateinference/landscape"],
   "formats": ["9x16"],
   "theme": "dark",
   "fps": 60,
@@ -64,5 +65,5 @@
       "claims": [{"text": "Side-by-side table, each product in its most private mode", "source": "p2"}]
     }
   ],
-  "outro": {"tagline": "Access AI privately."}
+  "outro": {"url": "privateinference.gg", "note": "Upcoming"}
 }

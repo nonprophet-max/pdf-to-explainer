@@ -1,43 +1,46 @@
 // __TITLE__
-// One component per storyboard scene. Stage coordinates are 9:16 (1080×1920); times are ticks (30/s).
-// Keep `ticks` = storyboard baseSeconds × 30. The engine adds the 1.15 s holds, the 2 s conclusion
-// hold and the brand outro, and lays every scene out for both 9:16 and 16:9.
+// Scenes: captions go in the scene list at the bottom; each Stage draws the 9:16 stage (1080×1920).
+// Times are ticks (30/s). The engine spaces caption blocks 0.5 s apart, sizes every scene to its
+// reading time (`ticks` is only a minimum), and adds the 1.15 s holds, the 2 s conclusion hold and
+// the brand outro. Sync visuals to captions with `cues` (start tick of each caption block).
 import React from 'react';
 import {interpolate} from 'remotion';
-import {Scene} from '../../engine/Scene';
-import {VideoDef, withPlates} from '../../engine/Video';
+import {SceneDef, StageProps, VideoDef, withPlates} from '../../engine/Video';
 import {At, Bubble, Card, Coin, Eye, Pop, clamp, useTick} from '../../engine/parts';
 import plates from './plates.json';
 
-const Hook: React.FC<{dur: number}> = ({dur}) => {
+const Hook: React.FC<StageProps> = ({cues}) => {
   const t = useTick();
   const bob = Math.sin(t / 10) * 10;
   return (
-    <Scene dur={dur} caption={{top: 300, size: 104, lines: [{t: 'Replace this', at: 4}, {t: 'with the *hook.', at: 30}]}}>
-      <At x={540} y={1250 + bob}><Pop delay={8} rot={-40}><Coin size={260} /></Pop></At>
-      <At x={200} y={1050}><Eye size={110} delay={50} seed={1} look={[340, 200]} /></At>
-    </Scene>
+    <>
+      <At x={540} y={1150 + bob}><Pop delay={8} rot={-40}><Coin size={260} /></Pop></At>
+      <At x={200} y={900}><Eye size={110} delay={cues[1]} seed={1} look={[340, 250]} /></At>
+    </>
   );
 };
 
-const Conclusion: React.FC<{dur: number}> = ({dur}) => {
+const Conclusion: React.FC<StageProps> = ({cues}) => {
   const t = useTick();
-  const x = interpolate(t, [20, 70], [300, 760], clamp);
+  const x = interpolate(t, [cues[1], cues[1] + 40], [300, 700], clamp);
   return (
-    <Scene dur={dur} caption={{top: 260, size: 100, lines: [{t: 'Replace this', at: 2}, {t: 'with the *conclusion.', at: 24}]}}>
-      <At x={790} y={1400}><Pop delay={6}><Card label="Service" sub="sees nothing" /></Pop></At>
-      <At x={x} y={1200}><Bubble /></At>
-    </Scene>
+    <>
+      <At x={700} y={1300}><Pop delay={6}><Card label="Service" sub="sees nothing" /></Pop></At>
+      <At x={x} y={1100}><Bubble /></At>
+    </>
   );
 };
+
+const scenes: SceneDef[] = [
+  {id: 'hook', Stage: Hook, caption: {top: 300, size: 104, lines: [{t: 'Replace this'}, {t: 'with the *hook.'}]}, stageTop: 700, stageBottom: 1600},
+  {id: 'conclusion', Stage: Conclusion, caption: {top: 260, size: 100, lines: [{t: 'Replace this'}, {t: 'with the *conclusion.'}]}, stageTop: 760, stageBottom: 1600},
+];
 
 const video: VideoDef = {
   id: '__ID__',
   title: '__TITLE__',
-  scenes: [
-    {id: 'hook', C: Hook, ticks: 105},
-    {id: 'conclusion', C: Conclusion, ticks: 120},
-  ],
+  brand: '__BRAND__',
+  scenes,
   outro: {},
 };
 

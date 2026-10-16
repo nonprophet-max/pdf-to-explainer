@@ -16,6 +16,7 @@ Instead of an account, each chat session is paid from its own small vault on Azt
 - Next: vault sessions on mainnet, then hiding which session a request draws from, so not even the PI ledger can tie two requests together.
 
 ## Keep these qualifiers
+- **Status:** the Persistent Labs design system lists Private Inference as an **upcoming** product. Don't present it as live; put the status in the outro note.
 - **Testnet.** Say "on Aztec testnet" or put "Sessions on Aztec testnet" in the outro note. Never imply mainnet.
 - "Next" items are plans, not features: phrase as "next", "coming", never present tense.
 

@@ -16,6 +16,7 @@ PI's most private way to run a prompt: your side checks the enclave and encrypts
 - Works from the browser or the API; nothing to install.
 
 ## Keep these qualifiers
+- **Status:** the Persistent Labs design system lists Private Inference as an **upcoming** product. Don't present it as live; put the status in the outro note.
 - "private mode" — the default path is not end-to-end encrypted.
 - "beta" when the source says so; private mode on open models where the source says "open models".
 - In private mode the PI ledger still links requests to one account, unless paid through a vault session. Never imply unlinkability.
@@ -25,7 +26,7 @@ PI's most private way to run a prompt: your side checks the enclave and encrypts
 - "Military-grade". "Zero-knowledge" (it's attestation + encryption, not ZK).
 
 ## Motifs
-Bubble → padlock snaps on (bubble turns dark, gold gibberish) → passes cards labelled "sees ciphertext" with closed eyes → unlocks inside the glowing `Enclave`. Caption the box "secure enclave" (plain) or "attested enclave" (precise).
+Bubble → padlock snaps on (bubble turns dark, gibberish) → passes cards labelled "sees ciphertext" with closed eyes → unlocks inside the glowing `Enclave`. Caption the box "secure enclave" (plain) or "attested enclave" (precise).
 
 ## Lines that work
 - "Your prompt stays *encrypted / until it's inside a *secure *enclave."

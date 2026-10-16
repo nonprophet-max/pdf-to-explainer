@@ -14,6 +14,7 @@ Chat with leading AI models in the browser, or connect through an OpenAI-compati
 - Nothing to install: browser or API.
 
 ## Keep these qualifiers
+- **Status:** the Persistent Labs design system lists Private Inference as an **upcoming** product. Don't present it as live; put the status in the outro note.
 - Private mode (enclave) covers open models in beta; don't imply every model runs in an enclave.
 
 ## Don't say

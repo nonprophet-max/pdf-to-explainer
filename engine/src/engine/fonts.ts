@@ -1,6 +1,18 @@
-// Brand fonts. If brand/tokens.json changes fonts, change these two imports to match.
-import {loadFont as loadDisplay} from '@remotion/google-fonts/Poppins';
-import {loadFont as loadBody} from '@remotion/google-fonts/Inter';
+// Loads a brand pack's bundled fonts (copied from the design system) before the first frame renders.
+import {useEffect, useState} from 'react';
+import {cancelRender, continueRender, delayRender, staticFile} from 'remotion';
+import {BrandPack} from './theme';
 
-export const display = loadDisplay('normal', {weights: ['300', '500', '600'], subsets: ['latin']}).fontFamily;
-export const body = loadBody('normal', {weights: ['400', '500', '600'], subsets: ['latin']}).fontFamily;
+export const useBrandFonts = (pack: BrandPack) => {
+  const [handle] = useState(() => delayRender(`fonts for ${pack.id}`));
+  useEffect(() => {
+    Promise.all(
+      pack.fonts.faces.map(async (f) => {
+        const face = new FontFace(f.family, `url(${staticFile(f.src)}) format('woff2')`, {weight: f.weight});
+        document.fonts.add(await face.load());
+      }),
+    )
+      .then(() => continueRender(handle))
+      .catch((e) => cancelRender(e));
+  }, [handle, pack]);
+};

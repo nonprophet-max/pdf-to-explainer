@@ -22,7 +22,8 @@ SOFTWARE.
 
 ---
 
-The Private Inference name, logo (brand/assets/logo.svg) and brand bible
-(brand/) are trademarks and brand material of Private Inference and are not
-licensed under the MIT terms above. To use this engine for another brand,
-replace the contents of brand/ and products/.
+This repository contains no brand assets. Brand names, logos, fonts and guidance
+are fetched from the Persistent Labs design system at build time and keep their
+own terms: the marks and design bible are proprietary; the fonts are licensed
+under the SIL Open Font License. The product fact files in products/ describe
+those products and grant no rights to their names or marks.

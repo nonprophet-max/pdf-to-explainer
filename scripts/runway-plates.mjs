@@ -3,14 +3,14 @@
 // Plates are moving paper-cutout backdrops with no text; the engine keeps captions, brand and
 // cadence crisp on top. Needs RUNWAYML_API_SECRET (https://dev.runwayml.com).
 //
-//   node scripts/runway-plates.mjs <slug> [--formats 9x16] [--model gen4.5] [--scenes hook,pi-path] [--dry-run]
+//   node scripts/runway-plates.mjs <slug> [--brand <id>] [--formats 9x16] [--model gen4.5] [--scenes hook,pi-path] [--dry-run]
 //
 // Only scenes whose storyboard entry has a "plate" object are generated. Costs credits:
 // --dry-run prints each request and the estimated seconds without calling the API.
 import fs from 'node:fs';
 import {createRequire} from 'node:module';
 import path from 'node:path';
-import {args, readStoryboard, sceneTimes, tokens, videoDir} from './lib.mjs';
+import {GENERATIVE, args, readPack, readStoryboard, sceneTimes, videoDir} from './lib.mjs';
 
 const a = args();
 const slug = a._[0];
@@ -20,22 +20,22 @@ if (!slug) {
 }
 const engine = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..', 'engine');
 const sb = readStoryboard(engine, slug);
-const tk = tokens();
-const theme = tk.themes[sb.theme ?? tk.defaultTheme];
+const pack = readPack(engine, a.brand ?? sb.brand);
+const theme = pack.themes[sb.theme ?? 'dark'];
 const formats = String(a.formats ?? (sb.formats ?? ['9x16']).join(',')).split(',');
 const model = a.model ?? 'gen4.5';
 const only = a.scenes ? new Set(String(a.scenes).split(',')) : null;
 // gen4.5 text-to-video: ratio 1280:720 or 720:1280, integer duration 2–10 s, prompt ≤ 1000 chars
 const RATIO = {'9x16': '720:1280', '16x9': '1280:720'};
 
-const style = tk.generative.stylePrompt.replace('{bg}', theme.bg);
+const style = GENERATIVE.stylePrompt;
 const promptFor = (scene, format) =>
   [
     scene.plate.prompt,
     style,
-    `Palette: background ${theme.bg}, paper ${theme.paper2}, accent ${theme.gold}.`,
-    format === '9x16' ? 'Vertical phone composition; keep the top third, the bottom fifth and the right edge calm for captions and app UI.' : 'Wide composition; keep the left 40% empty for captions.',
-    tk.generative.rules,
+    `Palette: background ${theme.bg}, paper ${theme.paper2}, one accent ${theme.accent}`,
+    format === '9x16' ? 'Vertical phone composition' : 'Wide composition; keep the left 40% empty for captions',
+    GENERATIVE.rules,
   ]
     .map((x) => x.trim().replace(/\.$/, ''))
     .join('. ')
